@@ -108,21 +108,21 @@ class PagedKVCache:
         self.num_pages = num_pages
         # (num_pages, 2 for K/V, N_LAYERS, PAGE_SIZE, N_HEADS, HEAD_DIM)
         self.pages = np.zeros((num_pages, 2, N_LAYERS, page_size, N_HEADS, HEAD_DIM), dtype=np.float32)
-        self.free_pages = list(range(num_pages))
+        self._free_page_pool = list(range(num_pages))
         self.page_tables = {}   # req_id -> [page_idx, ...]
         self.req_lengths = {}   # req_id -> current token count
 
     def alloc(self, req_id, num_tokens):
         pages_needed = math.ceil(num_tokens / self.page_size)
-        if len(self.free_pages) < pages_needed:
+        if len(self._free_page_pool) < pages_needed:
             return False
-        self.page_tables[req_id] = [self.free_pages.pop() for _ in range(pages_needed)]
+        self.page_tables[req_id] = [self._free_page_pool.pop() for _ in range(pages_needed)]
         self.req_lengths[req_id] = 0
         return True
 
     def free(self, req_id):
         if req_id in self.page_tables:
-            self.free_pages.extend(self.page_tables.pop(req_id))
+            self._free_page_pool.extend(self.page_tables.pop(req_id))
             self.req_lengths.pop(req_id, None)
 
     def write(self, req_id, pos, layer_idx, K, V):
@@ -144,10 +144,10 @@ class PagedKVCache:
         return self.page_tables.get(req_id, [])
 
     def used_pages(self):
-        return self.num_pages - len(self.free_pages)
+        return self.num_pages - len(self._free_page_pool)
 
     def free_pages(self):
-        return len(self.free_pages)
+        return len(self._free_page_pool)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**

@@ -7,24 +7,85 @@
 支持中文语料训练、权重共享、Adam 优化器（带 warmup 与 cosine 衰减）、梯度裁剪、
 模型保存/加载、文本生成（支持 temperature 与 top-k 采样）。
 
+同时兼容 CPU (NumPy) 和 GPU (CuPy) 训练。
+- 默认自动检测: 若有可用的 CUDA GPU 则使用 GPU,否则回退到 CPU
+- 强制 CPU: python train_gpt.py --device cpu
+- 强制 GPU: python train_gpt.py --device gpu (需要 cupy)
+
 直接运行: python train_gpt.py
 """
 
-import numpy as np
 import os
 import sys
 import time
+import argparse
 from collections import Counter
 
-try:
-    import requests
-except ImportError:
-    requests = None
+# ===========================================================================
+# 模块 0: 设备管理 (CPU/GPU 自动选择)
+# ===========================================================================
+# 尝试导入 CuPy (GPU 加速),失败则回退到 NumPy (CPU)
+_cupy_available = False
+_gpu_id = -1
 
-try:
-    from tqdm import tqdm
-except ImportError:
-    tqdm = None
+def _parse_device_arg():
+    """从命令行参数中解析 --device,返回 'cpu' 或 'gpu' 或 None (自动)"""
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--device', type=str, default=None, choices=['cpu', 'gpu'])
+    args, _ = parser.parse_known_args()
+    return args.device
+
+def setup_device():
+    """
+    初始化计算设备。
+    返回 (xp, numpy, device_name):
+      - xp: 用于张量运算的模块 (cupy 或 numpy)
+      - numpy: 原始 numpy 模块 (用于 CPU 侧操作, 如数据预处理、文本处理)
+      - device_name: 描述字符串
+    """
+    global _cupy_available, _gpu_id
+    device_arg = _parse_device_arg()
+
+    if device_arg == 'cpu':
+        import numpy as _np
+        return _np, _np, 'CPU (强制)'
+
+    if device_arg != 'cpu':
+        try:
+            import cupy as _cp
+            # 尝试访问 GPU
+            _gpu_id = _cp.cuda.Device().id
+            _cupy_available = True
+            import numpy as _np
+            print(f"[设备] GPU 已启用: {_cp.cuda.runtime.getDeviceProperties(_gpu_id)['name'].decode()}")
+            return _cp, _np, f"GPU (CUDA Device {_gpu_id})"
+        except Exception as e:
+            if device_arg == 'gpu':
+                print(f"[设备] 请求 GPU 但不可用: {e}")
+                print("[设备] 请安装 CuPy: pip install cupy-cuda12x (根据 CUDA 版本选择)")
+                sys.exit(1)
+            # 自动模式下回退
+            pass
+
+    import numpy as _np
+    return _np, _np, 'CPU (自动回退)'
+
+xp, numpy, DEVICE_NAME = setup_device()
+
+
+def scatter_add(target, indices, source):
+    """
+    兼容 NumPy 和 CuPy 的 scatter add 操作。
+    target[indices] += source  (处理重复索引)
+
+    NumPy 用 np.add.at, CuPy 用 cupyx.scatter_add。
+    用于 token embedding 梯度的反向传播。
+    """
+    if _cupy_available:
+        import cupyx
+        cupyx.scatter_add(target, indices, source)
+    else:
+        numpy.add.at(target, indices, source)
 
 
 # ===========================================================================
@@ -297,8 +358,8 @@ def prepare_data(text, char2idx, seq_len):
         inputs.append(chunk[:-1])
         targets.append(chunk[1:])
 
-    inputs = np.array(inputs, dtype=np.int32)
-    targets = np.array(targets, dtype=np.int32)
+    inputs = xp.array(inputs, dtype=xp.int32)
+    targets = xp.array(targets, dtype=xp.int32)
     print(f"[数据] 样本数: {inputs.shape[0]}, 序列长度: {seq_len}")
     return inputs, targets
 
@@ -309,7 +370,7 @@ def get_batch(inputs, targets, batch_size):
     返回 (batch_input, batch_target), shape 均为 (batch_size, seq_len)
     """
     n = inputs.shape[0]
-    indices = np.random.randint(0, n, size=batch_size)
+    indices = xp.random.randint(0, n, size=batch_size)
     return inputs[indices], targets[indices]
 
 
@@ -323,8 +384,8 @@ def xavier_init(fan_in, fan_out):
     scale = sqrt(2 / (fan_in + fan_out)),从正态分布采样后乘以 scale。
     方差比保持恒定有利于信号在深度网络中稳定传播。
     """
-    scale = np.sqrt(2.0 / (fan_in + fan_out))
-    return np.random.randn(fan_in, fan_out).astype(np.float32) * scale
+    scale = xp.sqrt(2.0 / (fan_in + fan_out))
+    return xp.random.randn(fan_in, fan_out).astype(xp.float32) * scale
 
 
 def init_model():
@@ -334,37 +395,37 @@ def init_model():
     这减少了参数量并提高了 token 表示的利用率。
     """
     params = {}
-    rng = np.random.default_rng(42)  # 固定种子确保可复现
+    rng = xp.random.default_rng(42)  # 固定种子确保可复现
 
     # Token 嵌入: (VOCAB_SIZE, D_MODEL)
-    params['token_embedding'] = rng.standard_normal((VOCAB_SIZE, D_MODEL)).astype(np.float32) * 0.02
+    params['token_embedding'] = rng.standard_normal((VOCAB_SIZE, D_MODEL)).astype(xp.float32) * 0.02
 
     # 位置嵌入: (MAX_SEQ_LEN, D_MODEL)
-    params['position_embedding'] = rng.standard_normal((MAX_SEQ_LEN, D_MODEL)).astype(np.float32) * 0.02
+    params['position_embedding'] = rng.standard_normal((MAX_SEQ_LEN, D_MODEL)).astype(xp.float32) * 0.02
 
     # 每个 Transformer 层的参数
     for i in range(N_LAYERS):
         prefix = f'block_{i}'
         # Pre-LayerNorm 1
-        params[f'{prefix}_ln1_gamma'] = np.ones(D_MODEL, dtype=np.float32)
-        params[f'{prefix}_ln1_beta'] = np.zeros(D_MODEL, dtype=np.float32)
+        params[f'{prefix}_ln1_gamma'] = xp.ones(D_MODEL, dtype=xp.float32)
+        params[f'{prefix}_ln1_beta'] = xp.zeros(D_MODEL, dtype=xp.float32)
         # 多头注意力的 Q, K, V, O 投影矩阵
         params[f'{prefix}_W_q'] = xavier_init(D_MODEL, D_MODEL)
         params[f'{prefix}_W_k'] = xavier_init(D_MODEL, D_MODEL)
         params[f'{prefix}_W_v'] = xavier_init(D_MODEL, D_MODEL)
         params[f'{prefix}_W_o'] = xavier_init(D_MODEL, D_MODEL)
         # Pre-LayerNorm 2
-        params[f'{prefix}_ln2_gamma'] = np.ones(D_MODEL, dtype=np.float32)
-        params[f'{prefix}_ln2_beta'] = np.zeros(D_MODEL, dtype=np.float32)
+        params[f'{prefix}_ln2_gamma'] = xp.ones(D_MODEL, dtype=xp.float32)
+        params[f'{prefix}_ln2_beta'] = xp.zeros(D_MODEL, dtype=xp.float32)
         # 前馈网络: D_MODEL → D_FF → D_MODEL
         params[f'{prefix}_W1'] = xavier_init(D_MODEL, D_FF)
-        params[f'{prefix}_b1'] = np.zeros(D_FF, dtype=np.float32)
+        params[f'{prefix}_b1'] = xp.zeros(D_FF, dtype=xp.float32)
         params[f'{prefix}_W2'] = xavier_init(D_FF, D_MODEL)
-        params[f'{prefix}_b2'] = np.zeros(D_MODEL, dtype=np.float32)
+        params[f'{prefix}_b2'] = xp.zeros(D_MODEL, dtype=xp.float32)
 
     # 最终的 LayerNorm
-    params['ln_f_gamma'] = np.ones(D_MODEL, dtype=np.float32)
-    params['ln_f_beta'] = np.zeros(D_MODEL, dtype=np.float32)
+    params['ln_f_gamma'] = xp.ones(D_MODEL, dtype=xp.float32)
+    params['ln_f_beta'] = xp.zeros(D_MODEL, dtype=xp.float32)
 
     # 计算总参数量
     total = sum(v.size for v in params.values())
@@ -378,7 +439,7 @@ def causal_mask(seq_len):
     在注意力计算中,将上三角位置(对应未来 token)设为极大负值,
     使其 softmax 后趋近于 0,注意力无法看到当前位置之后的内容。
     """
-    mask = np.triu(np.ones((seq_len, seq_len), dtype=np.float32), k=1)
+    mask = xp.triu(xp.ones((seq_len, seq_len), dtype=xp.float32), k=1)
     return mask * -1e9
 
 
@@ -390,7 +451,7 @@ def layer_norm(x, gamma, beta, eps=1e-5):
     """
     mean = x.mean(axis=-1, keepdims=True)
     var = x.var(axis=-1, keepdims=True)
-    x_norm = (x - mean) / np.sqrt(var + eps)
+    x_norm = (x - mean) / xp.sqrt(var + eps)
     out = gamma * x_norm + beta
     cache = (x, x_norm, mean, var, gamma, eps)
     return out, cache
@@ -406,14 +467,14 @@ def layer_norm_backward(dout, cache):
     x, x_norm, mean, var, gamma, eps = cache
     N = x.shape[-1]
 
-    dgamma = np.sum(dout * x_norm, axis=(0, 1) if dout.ndim == 3 else 0)
-    dbeta = np.sum(dout, axis=(0, 1) if dout.ndim == 3 else 0)
+    dgamma = xp.sum(dout * x_norm, axis=(0, 1) if dout.ndim == 3 else 0)
+    dbeta = xp.sum(dout, axis=(0, 1) if dout.ndim == 3 else 0)
 
     # 对 x 的完整梯度推导(考虑 mean 和 var 对 x 的依赖)
     dx_norm = dout * gamma
-    std_inv = 1.0 / np.sqrt(var + eps)
+    std_inv = 1.0 / xp.sqrt(var + eps)
     dx = std_inv * (dx_norm - dx_norm.mean(axis=-1, keepdims=True)
-                    - x_norm * np.mean(dx_norm * x_norm, axis=-1, keepdims=True))
+                    - x_norm * xp.mean(dx_norm * x_norm, axis=-1, keepdims=True))
     return dx, dgamma, dbeta
 
 
@@ -422,7 +483,7 @@ def softmax(x, axis=-1):
     数值稳定的 softmax: 先减去最大值再求指数,避免指数爆炸。
     """
     x_max = x.max(axis=axis, keepdims=True)
-    e_x = np.exp(x - x_max)
+    e_x = xp.exp(x - x_max)
     return e_x / e_x.sum(axis=axis, keepdims=True)
 
 
@@ -452,11 +513,11 @@ def multi_head_attention_forward(x, W_q, W_k, W_v, W_o, mask, training=True):
     V = V.reshape(batch, seq_len, N_HEADS, head_dim).transpose(0, 2, 1, 3)
 
     # 注意力分数: Q @ K^T / sqrt(head_dim)
-    scale = np.sqrt(head_dim)
+    scale = xp.sqrt(head_dim)
     scores = Q @ K.transpose(0, 1, 3, 2) / scale  # (batch, N_HEADS, seq_len, seq_len)
 
     # 应用因果掩码: 上三角设为 -1e9
-    scores = scores + mask[np.newaxis, np.newaxis, :, :]
+    scores = scores + mask[xp.newaxis, xp.newaxis, :, :]
 
     # softmax 归一化
     attn_weights = softmax(scores, axis=-1)  # (batch, N_HEADS, seq_len, seq_len)
@@ -465,7 +526,7 @@ def multi_head_attention_forward(x, W_q, W_k, W_v, W_o, mask, training=True):
     dropout_mask = None
     if training and DROPOUT > 0:
         # 生成 dropout mask: 以概率 1-DROPOUT 保留,并做 inverted dropout 缩放
-        dropout_mask = (np.random.rand(*attn_weights.shape) > DROPOUT).astype(np.float32)
+        dropout_mask = (xp.random.rand(*attn_weights.shape) > DROPOUT).astype(xp.float32)
         attn_weights = attn_weights * dropout_mask / (1.0 - DROPOUT)
 
     # 加权求和
@@ -516,7 +577,7 @@ def multi_head_attention_backward(dout, cache):
 
     # ---- 5. 反向通过 softmax: attn_weights = softmax(scores) ----
     # softmax 的雅可比: dscore_i = softmax_i * (dout_i - sum_j dout_j * softmax_j)
-    dscores = attn_weights * (dattn_weights - np.sum(dattn_weights * attn_weights, axis=-1, keepdims=True))
+    dscores = attn_weights * (dattn_weights - xp.sum(dattn_weights * attn_weights, axis=-1, keepdims=True))
 
     # ---- 6. 反向除以 scale: scores = Q @ K^T / sqrt(head_dim) ----
     dscores = dscores / scale
@@ -550,7 +611,7 @@ def feedforward_forward(x, W1, b1, W2, b2, training=True):
     训练时不应用 dropout(在模型外层 attention 的 dropout 已足够)。
     """
     h = x @ W1 + b1  # (batch, seq_len, D_FF)
-    h_act = np.maximum(0, h)  # ReLU
+    h_act = xp.maximum(0, h)  # ReLU
     output = h_act @ W2 + b2
     cache = (x, h, h_act, W1, W2)
     return output, cache
@@ -570,7 +631,7 @@ def feedforward_backward(dout, cache):
     dh_act = dout @ W2.T
 
     # 反向通过 ReLU
-    dh = dh_act * (h > 0).astype(np.float32)
+    dh = dh_act * (h > 0).astype(xp.float32)
 
     # 反向通过第一层线性
     dW1 = x.reshape(-1, x.shape[-1]).T @ dh.reshape(-1, dh.shape[-1])
@@ -731,10 +792,10 @@ def cross_entropy_loss(logits, targets):
     logits_stable = logits_2d - logits_max
 
     # log-sum-exp
-    log_sum_exp = np.log(np.exp(logits_stable).sum(axis=-1))
+    log_sum_exp = xp.log(xp.exp(logits_stable).sum(axis=-1))
 
     # 采集每个样本对应目标 token 的 logit
-    target_logits = logits_stable[np.arange(N), targets_1d]
+    target_logits = logits_stable[xp.arange(N), targets_1d]
 
     # 交叉熵 = -log p(target) = -target_logit + log(sum(exp(logits)))
     losses = -target_logits + log_sum_exp
@@ -756,11 +817,11 @@ def cross_entropy_backward(loss_cache):
 
     # softmax 概率
     logits_max = logits_stable.max(axis=-1, keepdims=True)
-    e_x = np.exp(logits_stable - logits_max)
+    e_x = xp.exp(logits_stable - logits_max)
     probs = e_x / e_x.sum(axis=-1, keepdims=True)
 
     # 对目标位置减 1 (梯度 = p - y_onehot)
-    probs[np.arange(N), targets_1d] -= 1.0
+    probs[xp.arange(N), targets_1d] -= 1.0
 
     # 平均梯度 (因为 loss 是 mean),并 reshape 回 3D
     dlogits = (probs / N).reshape(batch, seq_len, vocab_size)
@@ -780,8 +841,8 @@ class AdamOptimizer:
     """
 
     def __init__(self, params):
-        self.m = {key: np.zeros_like(val) for key, val in params.items()}
-        self.v = {key: np.zeros_like(val) for key, val in params.items()}
+        self.m = {key: xp.zeros_like(val) for key, val in params.items()}
+        self.v = {key: xp.zeros_like(val) for key, val in params.items()}
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.eps = 1e-8
@@ -796,7 +857,7 @@ class AdamOptimizer:
             return base_lr * step / max(1, warmup_steps)
         else:
             progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
-            return base_lr * 0.5 * (1 + np.cos(np.pi * progress))
+            return base_lr * 0.5 * (1 + xp.cos(xp.pi * progress))
 
     def step(self, params, grads, lr, t):
         """
@@ -815,7 +876,7 @@ class AdamOptimizer:
             v_hat = self.v[key] / (1 - self.beta2 ** t)
 
             # 更新参数
-            params[key] -= lr * m_hat / (np.sqrt(v_hat) + self.eps)
+            params[key] -= lr * m_hat / (xp.sqrt(v_hat) + self.eps)
 
 
 def clip_gradients(grads, max_norm):
@@ -827,8 +888,8 @@ def clip_gradients(grads, max_norm):
     # 计算所有梯度的全局 L2 范数
     total_norm = 0.0
     for g in grads.values():
-        total_norm += np.sum(g ** 2)
-    total_norm = np.sqrt(total_norm)
+        total_norm += xp.sum(g ** 2)
+    total_norm = xp.sqrt(total_norm)
 
     # 如果范数超过阈值,缩放所有梯度
     if total_norm > max_norm:
@@ -844,14 +905,17 @@ def clip_gradients(grads, max_norm):
 # ===========================================================================
 
 def save_model(params, path):
-    """保存模型参数到 .npz 文件"""
-    np.savez(path, **params)
+    """保存模型参数到 .npz 文件 (统一转为 NumPy 以确保兼容性)"""
+    if _cupy_available:
+        numpy.savez(path, **{k: xp.asnumpy(v) for k, v in params.items()})
+    else:
+        xp.savez(path, **params)
     print(f"[保存] 模型已保存到 {path}")
 
 
 def load_model(path):
     """从 .npz 文件加载模型参数"""
-    data = np.load(path)
+    data = xp.load(path)
     params = {key: data[key] for key in data.files}
     print(f"[加载] 从 {path} 加载了 {len(params)} 个参数张量")
     return params
@@ -907,13 +971,13 @@ def train_step(params, inputs_batch, targets_batch, optimizer, step, total_steps
 
     # 5. dh 现在是反向到初始嵌入 (token_emb + pos_emb) 的梯度
     # Token embedding 梯度:从高级索引反向,将梯度 scatter 到对应位置
-    d_token_embedding = np.zeros_like(params['token_embedding'])
-    np.add.at(d_token_embedding, inputs_batch, dh)  # 正确处理重复索引
+    d_token_embedding = xp.zeros_like(params['token_embedding'])
+    scatter_add(d_token_embedding, inputs_batch, dh)  # 正确处理重复索引
     grads['token_embedding'] += d_token_embedding
 
     # 位置嵌入梯度:对所有 batch 求和(因为位置嵌入在所有 batch 中共享)
     d_pos_emb = dh.sum(axis=0)  # (seq_len, D_MODEL)
-    grads['position_embedding'] = np.zeros_like(params['position_embedding'])
+    grads['position_embedding'] = xp.zeros_like(params['position_embedding'])
     grads['position_embedding'][:seq_len] = d_pos_emb
 
     # ============== 梯度裁剪 ==============
@@ -1000,27 +1064,31 @@ def generate(prompt, params, char2idx, idx2char, max_new_tokens=100, temperature
     for _ in range(max_new_tokens):
         # 取最后 MAX_SEQ_LEN 个 token 作为输入
         input_tokens = tokens[-MAX_SEQ_LEN:]
-        x = np.array([input_tokens], dtype=np.int32)  # (1, seq_len)
+        x = xp.array([input_tokens], dtype=xp.int32)  # (1, seq_len)
 
         # 前向传播
         logits, _, _, _ = gpt_forward(x, params, training=False)
 
-        # 取最后一个位置的 logits
-        next_logits = logits[0, -1, :]  # (VOCAB_SIZE,)
+        # 取最后一个位置的 logits, 同步到 CPU 用于采样和随机选择
+        if _cupy_available:
+            next_logits = xp.asnumpy(logits[0, -1, :])  # GPU → CPU
+        else:
+            next_logits = logits[0, -1, :]  # (VOCAB_SIZE,)
 
         # Temperature 缩放(越高越多样,越低越确定)
         next_logits = next_logits / temperature
 
         # Top-k 采样: 只从概率最高的 k 个中选择
         # 获取 top-k 的阈值
-        top_k_vals = np.partition(next_logits, -top_k)[-top_k]
-        next_logits[next_logits < top_k_vals] = -np.inf
+        top_k_vals = numpy.partition(next_logits, -top_k)[-top_k]
+        next_logits[next_logits < top_k_vals] = -numpy.inf
 
         # Softmax 得到采样概率
-        probs = softmax(next_logits)
+        e_x = numpy.exp(next_logits - next_logits.max())
+        probs = e_x / e_x.sum()
 
-        # 采样下一个 token
-        next_token = np.random.choice(len(probs), p=probs)
+        # 采样下一个 token (必须在 CPU 上用 numpy)
+        next_token = numpy.random.choice(len(probs), p=probs)
 
         tokens.append(next_token)
 
@@ -1042,6 +1110,7 @@ def main():
     print("=" * 60)
     print("  中文 GPT 模型 —— 纯 NumPy 从零实现")
     print(f"  模型: {N_LAYERS} 层, {D_MODEL} 维, {N_HEADS} 头, ~1M 参数")
+    print(f"  设备: {DEVICE_NAME}")
     print("=" * 60)
     print()
 
@@ -1067,10 +1136,17 @@ def main():
         print(f"\n[步骤 5] 发现已保存模型,加载中...")
         try:
             saved_params = load_model(MODEL_SAVE_PATH)
-            # 只加载匹配的参数
+            # 只加载匹配的参数,并确保数组类型与当前设备匹配
             for key in params:
                 if key in saved_params:
-                    params[key] = saved_params[key]
+                    val = saved_params[key]
+                    # 如果当前用 CuPy 但加载的是 NumPy 数组(或反之),做转换
+                    if _cupy_available and isinstance(val, numpy.ndarray):
+                        params[key] = xp.asarray(val)
+                    elif not _cupy_available and hasattr(val, 'get'):
+                        params[key] = val.get()  # CuPy → NumPy
+                    else:
+                        params[key] = val
             print("        模型加载成功,继续训练")
         except Exception as e:
             print(f"        加载失败: {e},使用初始参数训练")

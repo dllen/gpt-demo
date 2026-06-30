@@ -4,6 +4,8 @@ Extracts inference-only forward pass from train_gpt.py (no gradients).
 """
 import numpy as np
 import os
+import sys
+import time
 
 # Model constants (must match train_gpt.py)
 VOCAB_SIZE = 5000
@@ -14,8 +16,68 @@ N_LAYERS = 4
 D_FF = 256
 MAX_SEQ_LEN = 128
 
+DEFAULT_MODEL_URL = "https://github.com/nicholaswu/gpt-demo/releases/download/v1.0/gpt_chinese.npz"
+
+def download_model(model_path="gpt_chinese.npz", url=None):
+    """Download model if it doesn't exist locally. Returns the local path."""
+    if os.path.exists(model_path):
+        return model_path
+
+    if url is None:
+        url = DEFAULT_MODEL_URL
+
+    print(f"[下载] 模型文件不存在: {model_path}")
+    print(f"[下载] 正在从 {url} 下载...")
+
+    try:
+        import urllib.request
+        start = time.time()
+
+        def progress_hook(block_num, block_size, total_size):
+            downloaded = block_num * block_size
+            if total_size > 0:
+                pct = min(100, downloaded * 100 / total_size)
+                mb = downloaded / 1024 / 1024
+                total_mb = total_size / 1024 / 1024
+                sys.stdout.write(f"\r[下载] {pct:.1f}% ({mb:.1f}/{total_mb:.1f} MB)")
+                sys.stdout.flush()
+
+        # Ensure directory exists
+        dir_path = os.path.dirname(model_path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
+
+        urllib.request.urlretrieve(url, model_path, reporthook=progress_hook)
+        elapsed = time.time() - start
+        size_mb = os.path.getsize(model_path) / 1024 / 1024
+        print(f"\n[下载] 完成: {model_path} ({size_mb:.1f} MB, {elapsed:.1f}s)")
+        return model_path
+
+    except Exception as e:
+        print(f"\n[下载] 下载失败: {e}")
+        if os.path.exists(model_path):
+            os.remove(model_path)  # Clean up partial download
+        return None
+
+
+def ensure_model(model_path="gpt_chinese.npz", url=None):
+    """Ensure model file exists, downloading if needed. Returns path or raises."""
+    if os.path.exists(model_path):
+        return model_path
+
+    path = download_model(model_path, url)
+    if path is None:
+        raise FileNotFoundError(
+            f"模型文件 {model_path} 不存在且下载失败。\n"
+            f"请手动下载模型并放置到 {model_path}，或运行训练: python train_gpt.py"
+        )
+    return path
+
+
 def load_model_and_vocab(model_path="gpt_chinese.npz"):
     """Load model params and build char2idx/idx2char from saved npz."""
+    # Auto-download if missing
+    ensure_model(model_path)
     data = np.load(model_path)
     params = {key: data[key].astype(np.float64) for key in data.files}
 

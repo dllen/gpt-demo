@@ -26,6 +26,8 @@ class InferenceServer:
         self._params = None
 
     def start(self):
+        from model_forward import ensure_model
+        self.model_path = ensure_model(self.model_path)
         self._params, _, _ = self.scheduler.load_model(self.model_path)
         self._running = True
         self._sched_thread = threading.Thread(target=self._scheduler_loop, daemon=True)

@@ -80,6 +80,7 @@ def interactive_mode(server):
 def main():
     parser = argparse.ArgumentParser(description="vLLM-Inspired Inference Server")
     parser.add_argument('--model', default='gpt_chinese.npz', help='Model path')
+    parser.add_argument('--model-url', default=None, help='Model download URL (auto-download if model missing)')
     parser.add_argument('--batch-size', type=int, default=8, help='Max batch size')
     parser.add_argument('--workers', type=int, default=4, help='Thread pool size')
     parser.add_argument('--pages', type=int, default=256, help='Number of KV pages')
@@ -88,8 +89,16 @@ def main():
     parser.add_argument('--prompt', type=str, help='Single prompt mode')
     args = parser.parse_args()
 
+    # Ensure model exists (download if needed)
+    from model_forward import ensure_model
+    try:
+        model_path = ensure_model(args.model, url=args.model_url)
+    except FileNotFoundError as e:
+        print(f"\n[错误] {e}")
+        sys.exit(1)
+
     server = InferenceServer(
-        model_path=args.model,
+        model_path=model_path,
         max_batch_size=args.batch_size,
         num_workers=args.workers,
         window_ms=args.window_ms,

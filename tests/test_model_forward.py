@@ -1,7 +1,8 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import tempfile
 import numpy as np
-from model_forward import prefill, decode, sample_next, load_model_and_vocab
+from model_forward import prefill, decode, sample_next, load_model_and_vocab, download_model, ensure_model
 from kv_cache import PagedKVCache
 
 def test_load_model():
@@ -60,3 +61,28 @@ def test_prefill_decode_consistency():
     logits2 = decode(next_tok, cache2, "r2", params, current_pos=len(tokens))
 
     np.testing.assert_allclose(logits1, logits2, rtol=1e-5)
+
+def test_download_model_local_exists():
+    """download_model returns path immediately if file exists."""
+    # Use existing model file
+    result = download_model("gpt_chinese.npz")
+    assert result == "gpt_chinese.npz"
+
+def test_download_model_missing_returns_none():
+    """download_model returns None for unreachable URL."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "nonexistent_model.npz")
+        result = download_model(path, url="http://localhost:1/nonexistent.npz")
+        assert result is None
+        assert not os.path.exists(path)  # partial file cleaned up
+
+def test_ensure_model_raises_on_failure():
+    """ensure_model raises FileNotFoundError when download fails."""
+    import pytest
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "missing.npz")
+        try:
+            ensure_model(path, url="http://localhost:1/nonexistent.npz")
+            assert False, "Should have raised FileNotFoundError"
+        except FileNotFoundError as e:
+            assert "下载失败" in str(e) or "不存在" in str(e)

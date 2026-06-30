@@ -28,6 +28,11 @@ from collections import Counter
 _cupy_available = False
 _gpu_id = -1
 
+try:
+    import requests
+except ImportError:
+    requests = None
+
 def _parse_device_arg():
     """从命令行参数中解析 --device,返回 'cpu' 或 'gpu' 或 None (自动)"""
     parser = argparse.ArgumentParser(add_help=False)

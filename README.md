@@ -86,6 +86,23 @@ generate("春眠不觉晓", params, char2idx, idx2char,
 
 演示 prompts 包括：`春眠不觉晓`、`人生若只如初见`、`人工智能`、`大江东去`、`红色`。
 
+## vLLM 推理服务
+
+基于 vLLM 核心思想（Paged KV-Cache + Continuous Batching）的高并发推理服务。
+
+```bash
+python cli.py --demo              # 演示模式：5 个并发 prompt
+python cli.py                     # 交互模式
+python cli.py --prompt "春眠不觉晓" # 单次推理
+```
+
+架构：
+- `kv_cache.py` — Paged KV-Cache（虚拟内存：页表 + 物理页框）
+- `model_forward.py` — 前向推理（Prefill + Decode with Cache）
+- `scheduler.py` — Continuous Batching（连接池式请求调度）
+- `server.py` — 多线程推理服务
+- `cli.py` — CLI 入口 + 实时仪表盘
+
 ## 语料
 
 - **在线语料**：自动从 GitHub (chinese-poetry/chinese-poetry) 下载全唐诗（约 5 万首）

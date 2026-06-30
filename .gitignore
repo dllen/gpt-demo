@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.npz
+corpus.txt
+.DS_Store
+.idea/
+.vscode/
+*.egg-info/

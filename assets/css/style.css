@@ -391,7 +391,7 @@ a:hover { color: var(--primary-dark); }
   margin: 36px 0;
 }
 
-/* ========== Code Blocks ========== */
+/* ========== Code Blocks (Light Theme) ========== */
 
 /* Inline code */
 .tutorial-page code {
@@ -402,11 +402,12 @@ a:hover { color: var(--primary-dark); }
 .tutorial-page li code,
 .tutorial-page td code {
   background: var(--code-bg);
-  color: #be185d;
+  color: #d63384;
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 0.88em;
   font-weight: 500;
+  border: 1px solid var(--border);
 }
 
 /* Block code wrapper */
@@ -415,7 +416,9 @@ a:hover { color: var(--primary-dark); }
   margin: 20px 0 28px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #1e293b;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 /* Code header bar */
@@ -423,9 +426,9 @@ a:hover { color: var(--primary-dark); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #0f172a;
+  background: var(--bg-secondary);
   padding: 8px 16px;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border);
 }
 
 .code-lang {
@@ -433,16 +436,16 @@ a:hover { color: var(--primary-dark); }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .copy-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: transparent;
-  border: 1px solid #475569;
-  color: #94a3b8;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   font-size: 0.72rem;
   padding: 3px 10px;
   border-radius: 5px;
@@ -452,14 +455,15 @@ a:hover { color: var(--primary-dark); }
 }
 
 .copy-btn:hover {
-  background: #1e293b;
-  color: #e2e8f0;
-  border-color: #64748b;
+  background: var(--bg-secondary);
+  color: var(--text);
+  border-color: var(--primary);
 }
 
 .copy-btn.copied {
-  color: #10b981;
-  border-color: #10b981;
+  color: var(--success);
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.05);
 }
 
 .copy-btn svg {
@@ -469,8 +473,8 @@ a:hover { color: var(--primary-dark); }
 
 /* Code block */
 .tutorial-page pre {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #ffffff;
+  color: var(--text);
   padding: 16px 24px;
   overflow-x: auto;
   margin: 0;
@@ -493,7 +497,7 @@ a:hover { color: var(--primary-dark); }
 .highlight pre {
   margin: 0;
   padding: 16px 24px;
-  background: #1e293b;
+  background: #ffffff;
 }
 
 /* Remove white border on hover from minima theme */
@@ -501,12 +505,13 @@ a:hover { color: var(--primary-dark); }
 .tutorial-page .code-block-wrapper:hover,
 .tutorial-page pre:focus,
 .tutorial-page .code-block-wrapper:focus {
-  border-color: #1e293b;
+  border-color: var(--border);
   outline: none;
 }
 
 .code-block-wrapper:hover {
-  border-color: #1e293b;
+  border-color: var(--primary-200);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
 }
 
 /* Remove hover effect from rouge line number table */
@@ -523,9 +528,9 @@ a:hover { color: var(--primary-dark); }
 .rouge-gutter,
 .rouge-gutter:hover {
   user-select: none;
-  color: #475569;
+  color: var(--text-muted);
   background: transparent;
-  border-right: 1px solid #334155;
+  border-right: 1px solid var(--border);
 }
 
 .rouge-code,
@@ -537,32 +542,32 @@ a:hover { color: var(--primary-dark); }
 .tutorial-page pre.lineno,
 .tutorial-page .lineno {
   user-select: none;
-  color: #475569;
+  color: var(--text-muted);
   padding-right: 16px;
-  border-right: 1px solid #334155;
+  border-right: 1px solid var(--border);
   margin-right: 16px;
   text-align: right;
   min-width: 2.5em;
   display: inline-block;
 }
 
-/* ========== Rouge Syntax Highlighting Theme (Solarized Dark) ========== */
-.highlight .c { color: #6c71c4; font-style: italic; } /* Comment */
+/* ========== Rouge Syntax Highlighting Theme (Solarized Light) ========== */
+.highlight .c { color: #93a1a1; font-style: italic; } /* Comment */
 .highlight .err { color: #dc322f; } /* Error */
 .highlight .k { color: #859900; } /* Keyword */
 .highlight .l { color: #cb4b16; } /* Literal */
 .highlight .n { color: #268bd2; } /* Name */
 .highlight .o { color: #859900; } /* Operator */
-.highlight .p { color: #93a1a1; } /* Punctuation */
-.highlight .cm { color: #6c71c4; font-style: italic; } /* Comment.Multiline */
-.highlight .cp { color: #6c71c4; font-style: italic; } /* Comment.Preproc */
-.highlight .c1 { color: #6c71c4; font-style: italic; } /* Comment.Single */
-.highlight .cs { color: #6c71c4; font-style: italic; } /* Comment.Special */
+.highlight .p { color: #586e75; } /* Punctuation */
+.highlight .cm { color: #93a1a1; font-style: italic; } /* Comment.Multiline */
+.highlight .cp { color: #93a1a1; font-style: italic; } /* Comment.Preproc */
+.highlight .c1 { color: #93a1a1; font-style: italic; } /* Comment.Single */
+.highlight .cs { color: #93a1a1; font-style: italic; } /* Comment.Special */
 .highlight .gd { color: #dc322f; } /* Generic.Deleted */
 .highlight .ge { font-style: italic; } /* Generic.Emph */
 .highlight .gh { color: #b58900; font-weight: bold; } /* Generic.Heading */
 .highlight .gi { color: #859900; } /* Generic.Inserted */
-.highlight .gp { color: #93a1a1; font-weight: bold; } /* Generic.Prompt */
+.highlight .gp { color: #586e75; font-weight: bold; } /* Generic.Prompt */
 .highlight .gs { font-weight: bold; } /* Generic.Strong */
 .highlight .gu { color: #268bd2; font-weight: bold; } /* Generic.Subheading */
 .highlight .kc { color: #cb4b16; } /* Keyword.Constant */
@@ -589,7 +594,7 @@ a:hover { color: var(--primary-dark); }
 .highlight .nt { color: #859900; } /* Name.Tag */
 .highlight .nv { color: #268bd2; } /* Name.Variable */
 .highlight .ow { color: #859900; } /* Operator.Word */
-.highlight .w { color: #93a1a1; } /* Text.Whitespace */
+.highlight .w { color: #586e75; } /* Text.Whitespace */
 .highlight .mb { color: #cb4b16; } /* Literal.Number.Bin */
 .highlight .mf { color: #cb4b16; } /* Literal.Number.Float */
 .highlight .mh { color: #cb4b16; } /* Literal.Number.Hex */
@@ -599,7 +604,7 @@ a:hover { color: var(--primary-dark); }
 .highlight .sb { color: #2aa198; } /* Literal.String.Backtick */
 .highlight .sc { color: #2aa198; } /* Literal.String.Char */
 .highlight .dl { color: #2aa198; } /* Literal.String.Delimiter */
-.highlight .sd { color: #6c71c4; } /* Literal.String.Doc */
+.highlight .sd { color: #93a1a1; } /* Literal.String.Doc */
 .highlight .s2 { color: #2aa198; } /* Literal.String.Double */
 .highlight .se { color: #cb4b16; } /* Literal.String.Escape */
 .highlight .sh { color: #2aa198; } /* Literal.String.Heredoc */

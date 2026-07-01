@@ -434,6 +434,30 @@ a:hover { color: var(--primary-dark); text-decoration: underline; }
   border-color: #1e293b;
 }
 
+/* Remove hover effect from rouge line number table */
+.rouge-table,
+.rouge-table:hover,
+.rouge-table td,
+.rouge-table td:hover,
+.rouge-table tr,
+.rouge-table tr:hover {
+  background: transparent;
+  border: none;
+}
+
+.rouge-gutter,
+.rouge-gutter:hover {
+  user-select: none;
+  color: #475569;
+  background: transparent;
+  border-right: 1px solid #334155;
+}
+
+.rouge-code,
+.rouge-code:hover {
+  background: transparent;
+}
+
 /* Line numbers */
 .tutorial-page pre.lineno,
 .tutorial-page .lineno {

@@ -79,7 +79,17 @@ Module 01 专为**后端程序员**设计，用你已有的工程直觉快速理
 | [04-statistics-basics.md](./module-01-math-foundations/04-statistics-basics.md) | 描述统计、分布、协方差、大数定律 | 数据分析和评估 |
 | [05-math-cheat-sheet.md](./module-01-math-foundations/05-math-cheat-sheet.md) | 一页纸公式速查手册 | 随时查阅 |
 
-**推荐学习顺序**：`00 → 03 → 01 → 02 → 04 → 05(速查)`
+**推荐学习顺序**：`00 → 03 → 01 → 02 → 04 → 06(NumPy实战) → 05(速查)`
+
+## NumPy案例分布
+
+本教程系列在多个模块中提供NumPy实现案例：
+
+| 模块 | NumPy内容 |
+|------|----------|
+| [Module 01](./module-01-math-foundations/06-numpy-practical.md) | 完整NumPy实战：线代、统计、注意力、PCA、K-Means、性能优化 |
+| [Module 02](./module-02-transformer/01-self-attention.md#实践5纯numpy实现self-attention) | 纯NumPy实现Self-Attention和Multi-Head Attention |
+| [Module 05](./module-05-pretraining/01-pretraining.md#实践4numpy数据预处理) | NumPy数据预处理：去重、质量过滤、打包、数据增强 |
 
 ## 学习建议
 

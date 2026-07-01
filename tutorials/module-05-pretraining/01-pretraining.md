@@ -296,6 +296,170 @@ print("  prefetch_factor: 2-4")
 print("  persistent_workers: True")
 ```
 
+### 实践4：NumPy数据预处理
+
+```python
+import numpy as np
+from collections import Counter
+import hashlib
+
+print("=" * 60)
+print("实践4: NumPy数据预处理流水线")
+print("=" * 60)
+
+# 1. 数据去重 (MinHash简化版)
+print("\n--- 数据去重 ---")
+documents = [
+    "Python is a programming language",
+    "Python is a programming language",  # 重复
+    "Machine learning is amazing",
+    "Deep learning is a subset of ML",
+    "Machine learning is amazing",  # 重复
+]
+
+def simple_hash(text, num_hashes=3):
+    """简单的哈希签名"""
+    return [int(hashlib.md5(f"{text}_{i}".encode()).hexdigest(), 16) % 10000 for i in range(num_hashes)]
+
+# 去重
+seen_signatures = set()
+unique_docs = []
+for doc in documents:
+    sig = tuple(simple_hash(doc))
+    if sig not in seen_signatures:
+        seen_signatures.add(sig)
+        unique_docs.append(doc)
+
+print(f"原始文档数: {len(documents)}")
+print(f"去重后: {len(unique_docs)}")
+print(f"移除重复: {len(documents) - len(unique_docs)}")
+
+# 2. 质量过滤
+print("\n--- 质量过滤 ---")
+def quality_filter(texts, min_length=10, max_symbol_ratio=0.3):
+    """基于规则的质量过滤"""
+    filtered = []
+    for text in texts:
+        # 长度检查
+        if len(text) < min_length:
+            continue
+        # 符号比例检查
+        symbol_count = sum(1 for c in text if not c.isalnum() and not c.isspace())
+        if symbol_count / len(text) > max_symbol_ratio:
+            continue
+        filtered.append(text)
+    return filtered
+
+test_docs = [
+    "Good document with enough content",
+    "Bad!!!@@@###$$",
+    "Short",
+    "Another good document about machine learning and AI",
+]
+filtered_docs = quality_filter(test_docs)
+print(f"过滤前: {len(test_docs)}")
+print(f"过滤后: {len(filtered_docs)}")
+for doc in filtered_docs:
+    print(f"  ✓ {doc}")
+
+# 3. 数据集统计
+print("\n--- 数据集统计 ---")
+np.random.seed(42)
+# 模拟tokenized数据
+token_lengths = np.random.lognormal(mean=5, sigma=1, size=10000).astype(int)
+token_lengths = np.clip(token_lengths, 10, 2048)
+
+print(f"文档总数: {len(token_lengths)}")
+print(f"平均长度: {token_lengths.mean():.0f} tokens")
+print(f"中位数: {np.median(token_lengths):.0f} tokens")
+print(f"P95: {np.percentile(token_lengths, 95):.0f} tokens")
+print(f"P99: {np.percentile(token_lengths, 99):.0f} tokens")
+print(f"最大: {token_lengths.max()} tokens")
+
+# 长度分布直方图
+hist, edges = np.histogram(token_lengths, bins=[0, 128, 256, 512, 1024, 2048])
+print("\n长度分布:")
+for i, count in enumerate(hist):
+    pct = count / len(token_lengths) * 100
+    bar = "█" * int(pct / 2)
+    print(f"  [{edges[i]:4d}, {edges[i+1]:4d}): {count:5d} ({pct:5.1f}%) {bar}")
+
+# 4. 数据打包 (Batching)
+print("\n--- 数据打包 ---")
+def pack_sequences(sequences, max_length=512, pad_token=0):
+    """将多个短序列打包到一个batch中"""
+    packed = []
+    current = []
+
+    for seq in sequences:
+        if len(current) + len(seq) > max_length:
+            # 填充到max_length
+            current.extend([pad_token] * (max_length - len(current)))
+            packed.append(current[:max_length])
+            current = list(seq)
+        else:
+            current.extend(list(seq))
+
+    if current:
+        current.extend([pad_token] * (max_length - len(current)))
+        packed.append(current[:max_length])
+
+    return np.array(packed)
+
+# 模拟不同长度的序列
+sequences = [np.random.randint(1, 1000, size=np.random.randint(50, 200)) for _ in range(100)]
+packed = pack_sequences(sequences, max_length=512)
+print(f"原始序列数: {len(sequences)}")
+print(f"打包后batch数: {len(packed)}")
+print(f"每个batch shape: {packed.shape}")
+print(f"填充token比例: {np.sum(packed == 0) / packed.size * 100:.1f}%")
+
+# 5. 数据打乱与分片
+print("\n--- 数据打乱与分片 ---")
+data = np.arange(1000)
+np.random.shuffle(data)
+
+# 训练/验证/验证分割
+train_ratio, val_ratio = 0.8, 0.1
+n_train = int(len(data) * train_ratio)
+n_val = int(len(data) * val_ratio)
+
+train_data = data[:n_train]
+val_data = data[n_train:n_train + n_val]
+test_data = data[n_train + n_val:]
+
+print(f"总数据: {len(data)}")
+print(f"训练集: {len(train_data)} ({len(train_data)/len(data)*100:.0f}%)")
+print(f"验证集: {len(val_data)} ({len(val_data)/len(data)*100:.0f}%)")
+print(f"测试集: {len(test_data)} ({len(test_data)/len(data)*100:.0f}%)")
+
+# 6. NumPy实现数据增强
+print("\n--- 数据增强 ---")
+def random_mask_tokens(token_ids, mask_prob=0.15, mask_token_id=0, vocab_size=1000):
+    """随机掩码 (MLM风格)"""
+    masked = token_ids.copy()
+    labels = np.full_like(token_ids, -100)  # -100 = 不计算loss
+
+    for i in range(len(token_ids)):
+        if np.random.random() < mask_prob:
+            labels[i] = token_ids[i]
+            rand = np.random.random()
+            if rand < 0.8:
+                masked[i] = mask_token_id  # 80%替换为[MASK]
+            elif rand < 0.9:
+                masked[i] = np.random.randint(1, vocab_size)  # 10%随机
+            # 10%保持不变
+
+    return masked, labels
+
+token_ids = np.random.randint(1, 1000, size=20)
+masked, labels = random_mask_tokens(token_ids, mask_prob=0.15)
+print(f"原始: {token_ids}")
+print(f"掩码: {masked}")
+print(f"标签: {labels} (-100表示不计算loss)")
+print(f"掩码比例: {np.sum(labels != -100) / len(labels) * 100:.0f}%")
+```
+
 ## 总结
 
 | 技术 | 作用 | 推荐设置 |

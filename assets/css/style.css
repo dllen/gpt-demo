@@ -421,6 +421,19 @@ a:hover { color: var(--primary-dark); text-decoration: underline; }
   background: #1e293b;
 }
 
+/* Remove white border on hover from minima theme */
+.tutorial-page pre:hover,
+.tutorial-page .code-block-wrapper:hover,
+.tutorial-page pre:focus,
+.tutorial-page .code-block-wrapper:focus {
+  border-color: #1e293b;
+  outline: none;
+}
+
+.code-block-wrapper:hover {
+  border-color: #1e293b;
+}
+
 /* Line numbers */
 .tutorial-page pre.lineno,
 .tutorial-page .lineno {

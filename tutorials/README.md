@@ -53,7 +53,7 @@
 
 | 模块 | 主题 | 理论 | 实践 | 难度 |
 |------|------|------|------|------|
-| [Module 01](./module-01-math-foundations/) | 数学基础与预备知识 | 线性代数、概率论、优化基础 | NumPy/PyTorch基础 | ⭐ |
+| [Module 01](./module-01-math-foundations/) | 数学基础与预备知识 | 线性代数、微积分、概率统计、优化 | NumPy/PyTorch基础 | ⭐ |
 | [Module 02](./module-02-transformer/) | Transformer架构深入 | Self-Attention、多头注意力 | 手写Transformer | ⭐⭐ |
 | [Module 03](./module-03-tokenization/) | 分词与词表构建 | BPE、SentencePiece | 训练自己的Tokenizer | ⭐⭐ |
 | [Module 04](./module-04-model-architecture/) | 模型架构实现 | RoPE、RMSNorm、SwiGLU、GQA | 实现LLaMA-style模型 | ⭐⭐⭐ |
@@ -65,6 +65,21 @@
 | [Module 10](./module-10-agents/) | Agent系统 | ReAct、工具调用、规划 | 构建Agent | ⭐⭐⭐⭐ |
 | [Module 11](./module-11-evaluation/) | 模型评估 | 评测指标、基准测试 | 评估框架使用 | ⭐⭐ |
 | [Module 12](./module-12-deployment/) | 部署与LLMOps | 服务化、监控、CI/CD | 模型部署实践 | ⭐⭐⭐ |
+
+## Module 01 详细结构
+
+Module 01 专为**后端程序员**设计，用你已有的工程直觉快速理解ML数学：
+
+| 文件 | 内容 | 适合人群 |
+|------|------|---------|
+| [00-backend-dev-crash-course.md](./module-01-math-foundations/00-backend-dev-crash-course.md) | 后端概念→ML概念映射，张量的后端视角 | 所有后端开发者 |
+| [01-linear-algebra.md](./module-01-math-foundations/01-linear-algebra.md) | 向量、矩阵、点积、Softmax | 需要线性代数基础 |
+| [02-probability-optimization.md](./module-01-math-foundations/02-probability-optimization.md) | 概率论、信息论、优化基础 | 需要概率论基础 |
+| [03-calculus-derivatives.md](./module-01-math-foundations/03-calculus-derivatives.md) | 导数、梯度、链式法则、反向传播 | 理解训练过程必读 |
+| [04-statistics-basics.md](./module-01-math-foundations/04-statistics-basics.md) | 描述统计、分布、协方差、大数定律 | 数据分析和评估 |
+| [05-math-cheat-sheet.md](./module-01-math-foundations/05-math-cheat-sheet.md) | 一页纸公式速查手册 | 随时查阅 |
+
+**推荐学习顺序**：`00 → 03 → 01 → 02 → 04 → 05(速查)`
 
 ## 学习建议
 

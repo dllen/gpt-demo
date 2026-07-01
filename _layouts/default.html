@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title | default: site.title }}</title>
+  <meta name="description" content="{{ page.excerpt | default: site.description }}">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  {% if site.google_analytics %}
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.google_analytics }}"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ site.google_analytics }}');</script>
+  {% endif %}
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h3><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h3>
+      <p class="site-description">{{ site.description }}</p>
+    </div>
+    <ul class="nav-list">
+      <li><a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">首页</a></li>
+      <li><a href="{{ '/tutorials/README' | relative_url }}" class="{% if page.url contains 'tutorials' %}active{% endif %}">教程目录</a></li>
+      <li class="nav-section">模块导航</li>
+      <li><a href="{{ '/tutorials/module-01-math-foundations/' | relative_url }}">Module 01: 数学基础</a></li>
+      <li><a href="{{ '/tutorials/module-02-transformer/' | relative_url }}">Module 02: Transformer</a></li>
+      <li><a href="{{ '/tutorials/module-03-tokenization/' | relative_url }}">Module 03: 分词</a></li>
+      <li><a href="{{ '/tutorials/module-04-model-architecture/' | relative_url }}">Module 04: 模型架构</a></li>
+      <li><a href="{{ '/tutorials/module-05-pretraining/' | relative_url }}">Module 05: 预训练</a></li>
+      <li><a href="{{ '/tutorials/module-06-finetuning/' | relative_url }}">Module 06: 微调</a></li>
+      <li><a href="{{ '/tutorials/module-07-alignment/' | relative_url }}">Module 07: 对齐</a></li>
+      <li><a href="{{ '/tutorials/module-08-inference/' | relative_url }}">Module 08: 推理优化</a></li>
+      <li><a href="{{ '/tutorials/module-09-rag/' | relative_url }}">Module 09: RAG</a></li>
+      <li><a href="{{ '/tutorials/module-10-agents/' | relative_url }}">Module 10: Agent</a></li>
+      <li><a href="{{ '/tutorials/module-11-evaluation/' | relative_url }}">Module 11: 评估</a></li>
+      <li><a href="{{ '/tutorials/module-12-deployment/' | relative_url }}">Module 12: 部署</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="https://github.com/dllen/gpt-demo" target="_blank">GitHub</a>
+    </div>
+  </nav>
+  <main class="content">
+    <article>
+      {{ content }}
+    </article>
+  </main>
+</body>
+</html>

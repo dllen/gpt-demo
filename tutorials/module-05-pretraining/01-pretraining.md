@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 05: 预训练 (Pre-training)"
+---
 # Module 05: 预训练 (Pre-training)
 
 ## 理论部分

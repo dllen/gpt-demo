@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 11: 模型评估"
+---
 # Module 11: 模型评估
 
 ## 理论部分

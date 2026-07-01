@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 04: 模型架构实现 — 构建LLaMA-style模型"
+---
 # Module 04: 模型架构实现 — 构建LLaMA-style模型
 
 ## 理论部分

@@ -1,9 +1,19 @@
-__pycache__/
-*.pyc
-*.pyo
-*.npz
-corpus.txt
-.DS_Store
+# Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# Bundler
+.bundle/
+vendor/
+
+# IDE
 .idea/
 .vscode/
-*.egg-info/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db

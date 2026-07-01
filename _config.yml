@@ -1,0 +1,59 @@
+title: 大模型全栈教程
+description: 从理论到实践，构建你自己的大语言模型系统 — 面向后端开发者的ML/LLM教程
+baseurl: "/gpt-demo"
+url: "https://dllen.github.io"
+
+theme: minima
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+markdown: kramdown
+highlighter: rouge
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+
+header_pages:
+  - tutorials/README.md
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .sass-cache/
+  - .jekyll-cache/
+  - .jekyll-metadata
+
+defaults:
+  - scope:
+      path: "tutorials"
+      type: "pages"
+    values:
+      layout: "page"
+      nav_order: 2
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+
+minima:
+  skin: classic
+  social_links:
+    github: dllen
+  show_excerpts: true
+
+sass:
+  sass_dir: _sass
+  style: compressed

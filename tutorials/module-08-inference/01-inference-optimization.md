@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 08: 推理优化 — KV Cache、量化与推测解码"
+---
 # Module 08: 推理优化 — KV Cache、量化与推测解码
 
 ## 理论部分

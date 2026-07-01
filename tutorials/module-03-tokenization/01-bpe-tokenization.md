@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 03: 分词与词表构建"
+---
 # Module 03: 分词与词表构建
 
 ## 理论部分

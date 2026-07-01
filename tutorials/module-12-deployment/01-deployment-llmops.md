@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 12: 部署与LLMOps"
+---
 # Module 12: 部署与LLMOps
 
 ## 理论部分

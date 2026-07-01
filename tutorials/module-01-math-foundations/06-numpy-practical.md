@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 01: 数学基础 — NumPy实战手册"
+---
 # Module 01: 数学基础 — NumPy实战手册
 
 > 用NumPy亲手实现所有ML核心运算

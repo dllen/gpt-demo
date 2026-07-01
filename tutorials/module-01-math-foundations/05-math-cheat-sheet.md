@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 01: 数学基础 — 速查手册"
+---
 # Module 01: 数学基础 — 速查手册
 
 > 一页纸的ML数学参考

@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 07: 对齐技术 — RLHF与DPO"
+---
 # Module 07: 对齐技术 — RLHF与DPO
 
 ## 理论部分

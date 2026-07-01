@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 10: Agent系统 — 智能体"
+---
 # Module 10: Agent系统 — 智能体
 
 ## 理论部分

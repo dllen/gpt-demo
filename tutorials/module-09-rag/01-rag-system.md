@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 09: RAG系统 — 检索增强生成"
+---
 # Module 09: RAG系统 — 检索增强生成
 
 ## 理论部分

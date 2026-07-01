@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 02: Transformer架构深入 — Self-Attention机制"
+---
 # Module 02: Transformer架构深入 — Self-Attention机制
 
 ## 理论部分

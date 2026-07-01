@@ -1,3 +1,7 @@
+---
+layout: page
+title: "Module 02: Transformer架构深入 — 完整Transformer Block"
+---
 # Module 02: Transformer架构深入 — 完整Transformer Block
 
 ## 理论部分
